@@ -8,6 +8,8 @@ import Packages
 import Settings.Builders.Common
 import Settings.Warnings
 
+import Debug.Trace (trace)
+
 ghcBuilderArgs :: Args
 ghcBuilderArgs = mconcat [compileAndLinkHs, compileC, findHsDependencies]
 
@@ -96,7 +98,22 @@ commonGhcArgs = do
 wayGhcArgs :: Args
 wayGhcArgs = do
     way <- getWay
-    mconcat [ if (Dynamic `wayUnit` way)
+    p <- getPackage
+    rtsWays <- getRtsWays
+    let
+        dynRts = any (Dynamic `wayUnit`) rtsWays
+        dynWay = Dynamic `wayUnit` way
+
+        traceMsg = "******** (package, way, dynRts): " ++ show (p, way, dynRts)
+
+
+        dynamic = if p == ghc 
+                    then dynRts || dynWay
+                    else dynWay
+
+
+
+    mconcat [ if dynamic
               then pure ["-fPIC", "-dynamic"]
               else arg "-static"
             , (Threaded  `wayUnit` way) ? arg "-optc-DTHREADED_RTS"
